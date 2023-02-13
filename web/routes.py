@@ -1,5 +1,5 @@
 from flask import Flask
-from app import app
+from web import app
 
 
 @app.route('/')

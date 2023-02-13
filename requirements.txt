@@ -1,0 +1,8 @@
+itsdangerous
+wtforms
+Flask==1.1.4
+flask_script
+markupsafe==2.0.1
+pymongo[snappy,gssapi,srv,tls]
+dnspython
+certifi
