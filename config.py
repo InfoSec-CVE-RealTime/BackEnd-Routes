@@ -7,7 +7,7 @@ class Config(object):
 
     DEBUG = False
     MONGO_DB = os.environ.get("MONGO_DB", "cve_data")
-    MONGO_URI = os.environ.get("MONGO_URL", "mongodb://localhost:27017/")
+    MONGO_URI = os.environ.get("MONGO_URI", "mongodb://localhost:27017/")
     SECRET_KEY = os.environ.get("SECRET_KEY", "secret")
 
     # WORK_KEY = "toWorker"
