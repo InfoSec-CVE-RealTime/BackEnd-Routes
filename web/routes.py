@@ -1,11 +1,8 @@
-from flask import Flask
+import flask
 from web import app
-from web.models import Test
-from datetime import datetime
+from web.models import CVE
 
 
 @app.route("/")
 def home():
-    test = Test({"name": "test", "time": datetime.utcnow()})
-    test.push()
     return "Hello, World!"
