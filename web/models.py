@@ -32,7 +32,6 @@ class Product(BaseDocument):
 class VendorProduct(BaseDocument):
     collection = db.vendor_products
     fields = {
-        "": DataType(int, nullable=False),
         "vendor": DataType(str, nullable=False),
         "product": DataType(str, nullable=False)
     }
