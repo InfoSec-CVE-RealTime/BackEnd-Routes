@@ -413,13 +413,27 @@ def join_path(path, field):
         return f"{path}.{field}"
 
 
+def get_json_compatible(data):
+    datatype = type(data)
+    if datatype is list:
+        return [get_json_compatible(item) for item in data]
+    elif datatype is dict:
+        return {field: get_json_compatible(value) for field, value in data.items()}
+    elif datatype is ObjectId:
+        return str(data)
+    elif datatype is datetime:
+        return data.isoformat()
+    else:
+        return data
+
+
 def serialize(data):
     datatype = type(data)
     if datatype is not list and datatype is not dict:
         if datatype is ObjectId:
             serialized_data = {'type': 'ObjectId', 'value': str(data)}
         elif datatype is datetime:
-            serialized_data = {'type': 'datetime', 'value': data.strftime('%m%d%Y, %H%M:%S')}
+            serialized_data = {'type': 'datetime', 'value': data.strftime('%m/%d/%Y, %H:%M:%S')}
         else:
             serialized_data = {'type': 'no_change', 'value': data}
     elif datatype is list:
@@ -435,7 +449,7 @@ def deserialize(data):
         if data['type'] == 'ObjectId':
             return get_obj_id(data['value'])
         elif data['type'] == 'datetime':
-            return datetime.strptime(data['value'], '%m%d%Y, %H%M:%S')
+            return datetime.strptime(data['value'], '%m/%d/%Y, %H:%M:%S')
         else:
             return data['value']
     elif data['type'] == 'list':

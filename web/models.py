@@ -20,6 +20,16 @@ class CVE(BaseDocument):
         "impact_integrity": DataType(str, nullable=False)
     }
 
+    @classmethod
+    def get_top_cves(cls, min_date, max_date, page, page_size, as_dicts=True):
+        cves = cls.collection.aggregate([
+            {"$match": {"pub_date": {"$gte": min_date, "$lte": max_date}}},
+            {"$sort": {"cvss": -1}},
+            {"$skip": page * page_size},
+            {"$limit": page_size}
+        ])
+        return list(cves) if as_dicts else [cls(cve) for cve in cves]
+
 
 class Product(BaseDocument):
     collection = db.products
