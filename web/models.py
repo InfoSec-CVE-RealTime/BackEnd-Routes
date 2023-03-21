@@ -89,6 +89,53 @@ class Product(BaseDocument):
         "vulnerable_product": DataType(str, nullable=False)
     }
 
+    @classmethod
+    def get_top_products(cls, min_date, max_date, page, page_size, as_dicts=True):
+        """Get the top products by number of CVEs in a given date range. Since the date of a CVE is in the CVE
+        collection, this method uses an aggregate query to join the CVE and Product collections."""
+        products = CVE.collection.aggregate([
+            {"$match": {"pub_date": {"$gte": min_date, "$lte": max_date}}},
+            {"$lookup": {
+                "from": "products",
+                "localField": "cve_id",
+                "foreignField": "cve_id",
+                "as": "products"
+            }},  # match items with more than one product
+            {"$match": {"products": {"$size": 2}}},
+            # {"$unwind": "$products"},
+            # {"$group": {"_id": "$cve_id", "count": {"$sum": 1}}},
+            # {"$sort": {"count": -1}},
+            # {"$unwind": "$products"},
+            # {"$group": {"_id": "$products.vulnerable_product", "count": {"$sum": 1}}},
+            # {"$sort": {"count": -1}},
+            # {"$skip": page * page_size},
+            {"$limit": page_size}
+        ])
+        # products = cls.collection.aggregate([
+        #     {"$group": {"_id": "$vulnerable_product", "cve_ids": {"$addToSet": "$cve_id"}}},
+        #     {"$lookup": {
+        #         "from": "cve",
+        #         "localField": "cve_id",
+        #         "foreignField": "cve_id",
+        #         "as": "cve"
+        #     }},
+        #     {"$unwind": "$cve"},
+        #     # {"$project": {"vulnerable_product": 1, "cve.pub_date": 1, "_id": 0}},
+        #     # {"$match": {"cve.pub_date": {"$gte": min_date, "$lte": max_date}}},
+        #     # {"$group": {"_id": "$vulnerable_product", "count": {"$sum": 1}}},
+        #     # {"$sort": {"count": -1}},
+        #     {"$skip": page * page_size},
+        #     {"$limit": page_size}
+        # ])
+        # products = cls.collection.aggregate([
+        #     {"$match": {"pub_date": {"$gte": min_date, "$lte": max_date}}},
+        #     {"$group": {"_id": "$vulnerable_product", "count": {"$sum": 1}}},
+        #     {"$sort": {"count": -1}},
+        #     {"$skip": page * page_size},
+        #     {"$limit": page_size}
+        # ])
+        return list(products) if as_dicts else [cls(product) for product in products]
+
 
 class VendorProduct(BaseDocument):
     collection = db.vendor_products
