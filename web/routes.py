@@ -70,11 +70,11 @@ def access_vector():
     return flask.jsonify(get_json_compatible(data))
 
 
-# @app.route("/api/v1.0/top_products")  # API ROUTE 4  -  DON'T USE! Doesn't work!
-# def top_products():
-#     min_date, max_date, page, page_size = get_top_data_args()
-#     cves = Product.get_top_products(min_date, max_date, page, page_size)
-#     return flask.jsonify(get_json_compatible(cves))
+@app.route("/api/v1.0/top_products")  # API ROUTE 4
+def top_products():
+    min_date, max_date, page, page_size = get_top_data_args()
+    cves = Product.get_top_products(min_date, max_date, page, page_size)
+    return flask.jsonify(get_json_compatible(cves))
 
 
 def get_top_data_args():

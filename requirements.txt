@@ -7,3 +7,4 @@ pymongo[snappy,gssapi,srv,tls]
 dnspython
 certifi
 flask-bcrypt
+requests

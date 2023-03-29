@@ -94,47 +94,50 @@ class Product(BaseDocument):
     def get_top_products(cls, min_date, max_date, page, page_size, as_dicts=True):
         """Get the top products by number of CVEs in a given date range. Since the date of a CVE is in the CVE
         collection, this method uses an aggregate query to join the CVE and Product collections."""
-        products = CVE.collection.aggregate([
-            {"$match": {"pub_date": {"$gte": min_date, "$lte": max_date}}},
-            {"$lookup": {
-                "from": "products",
-                "localField": "cve_id",
-                "foreignField": "cve_id",
-                "as": "products"
-            }},  # match items with more than one product
-            {"$match": {"products": {"$size": 2}}},
-            # {"$unwind": "$products"},
-            # {"$group": {"_id": "$cve_id", "count": {"$sum": 1}}},
-            # {"$sort": {"count": -1}},
-            # {"$unwind": "$products"},
-            # {"$group": {"_id": "$products.vulnerable_product", "count": {"$sum": 1}}},
-            # {"$sort": {"count": -1}},
-            # {"$skip": page * page_size},
-            {"$limit": page_size}
-        ])
-        # products = cls.collection.aggregate([
-        #     {"$group": {"_id": "$vulnerable_product", "cve_ids": {"$addToSet": "$cve_id"}}},
-        #     {"$lookup": {
-        #         "from": "cve",
-        #         "localField": "cve_id",
-        #         "foreignField": "cve_id",
-        #         "as": "cve"
-        #     }},
-        #     {"$unwind": "$cve"},
-        #     # {"$project": {"vulnerable_product": 1, "cve.pub_date": 1, "_id": 0}},
-        #     # {"$match": {"cve.pub_date": {"$gte": min_date, "$lte": max_date}}},
-        #     # {"$group": {"_id": "$vulnerable_product", "count": {"$sum": 1}}},
-        #     # {"$sort": {"count": -1}},
-        #     {"$skip": page * page_size},
-        #     {"$limit": page_size}
-        # ])
-        # products = cls.collection.aggregate([
-        #     {"$match": {"pub_date": {"$gte": min_date, "$lte": max_date}}},
-        #     {"$group": {"_id": "$vulnerable_product", "count": {"$sum": 1}}},
-        #     {"$sort": {"count": -1}},
-        #     {"$skip": page * page_size},
-        #     {"$limit": page_size}
-        # ])
+
+        pipeline = [
+            {
+                "$lookup": {
+                    "from": Product.collection.name,
+                    "localField": "cve_id",
+                    "foreignField": "cve_id",
+                    "as": "products"
+                }
+            },
+            {
+                "$unwind": "$products"
+            },
+            {
+                "$match": {
+                    "products.vulnerable_product": {"$exists": True},
+                    "pub_date": {"$gte": min_date, "$lte": max_date}
+                }
+            },
+            {
+                "$group": {
+                    "_id": "$products.vulnerable_product",
+                    "count": {"$sum": 1}
+                }
+            },
+            {
+                "$sort": {"count": -1}
+            },
+            {
+                "$skip": page * page_size
+            },
+            {
+                "$limit": page_size
+            },
+            {
+                "$project": {
+                    "_id": 0,
+                    "product": "$_id",
+                    "count": 1
+                }
+            }
+        ]
+
+        products = CVE.collection.aggregate(pipeline)
         return list(products) if as_dicts else [cls(product) for product in products]
 
 
@@ -194,3 +197,27 @@ class User(BaseDocument):
         if push:
             user.push()
         return user
+
+
+def test():
+    from pymongo import UpdateOne
+    # Aggregate the relevant Product documents
+    pipeline = [
+        {"$group": {"_id": "$cve_id", "products": {"$push": "$vulnerable_product"}}}
+    ]
+    product_aggregation = Product.collection.aggregate(pipeline)
+
+    # Create a list of bulk write operations to update the corresponding CVE documents
+    bulk_operations = []
+    for product_doc in product_aggregation:
+        cve_id = product_doc["_id"]
+        products = product_doc["products"]
+        bulk_operations.append(UpdateOne({"cve_id": cve_id}, {"$set": {"products": products}}))
+
+    # Execute the bulk write operations
+    result = CVE.collection.bulk_write(bulk_operations)
+    print(f"{result.modified_count} documents updated")
+
+
+if __name__ == "__main__":
+    test()
