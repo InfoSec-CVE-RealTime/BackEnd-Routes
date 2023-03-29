@@ -1,13 +1,48 @@
 import flask
 from web import app
 from datetime import datetime
-from web.models import CVE, Product, MIN_DATE
+from web.models import CVE, Product, MIN_DATE, User
 from web.db import get_json_compatible
 
 
 @app.route("/")
 def home():
     return flask.jsonify({"message": "Hello World!"})
+
+
+@app.route("/api/v1.0/signup", methods=["POST"])
+def signup():
+    email = flask.request.json.get("email")
+    name = flask.request.json.get("name")
+    password = flask.request.json.get("password")
+    if not email or not password:
+        return flask.jsonify({"message": "Email, name, and password are required."}), 400
+    user = User.create(email, name, password)
+    if not user:
+        return flask.jsonify({"message": "User with that email already exists."}), 400
+    return flask.jsonify({
+        "user": {
+            "email": user["email"],
+            "name": user["name"]
+        }
+    }), 201
+
+
+@app.route("/api/v1.0/login", methods=["POST"])
+def login():
+    email = flask.request.json.get("email")
+    password = flask.request.json.get("password")
+    if not email or not password:
+        return flask.jsonify({"message": "Email and password are required."}), 400
+    user = User.login(email, password)
+    if not user:
+        return flask.jsonify({"message": "Invalid email or password."}), 400
+    return flask.jsonify({
+        "user": {
+            "email": user["email"],
+            "name": user["name"]
+        }
+    }), 200
 
 
 @app.route("/api/v1.0/top_cves")  # API ROUTE 1

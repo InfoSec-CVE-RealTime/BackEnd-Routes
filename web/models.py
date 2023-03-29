@@ -1,5 +1,6 @@
 from web.db import db, BaseDocument, DataType
 from datetime import datetime
+from web import bcrypt
 
 MIN_DATE = datetime(1988, 1, 1)
 
@@ -151,3 +152,45 @@ class Vendor(BaseDocument):
         "cve_id": DataType(str, nullable=False),
         "vendor": DataType(str, nullable=False)
     }
+
+
+class User(BaseDocument):
+    collection = db.users
+    fields = {
+        "email": DataType(str, nullable=False),
+        "name": DataType(str, nullable=False),
+        "password": DataType(str, nullable=False)
+    }
+
+    def get_id(self):
+        # For login management purposes only - do not remove
+        return str(self["_id"])
+
+    @staticmethod
+    def login(email, password):
+        user = User.find(search={"email": email}, one=True)
+
+        if not user:
+            print("User does not exist")
+            return None
+
+        if bcrypt.check_password_hash(user["password"], password):
+            return user
+
+        print("Wrong password")
+        return None
+
+    @staticmethod
+    def create(email, name, password, push=True):
+        if User.find(search={"email": email}, one=True):
+            print("Username already taken")
+            return None
+
+        user = User({
+            "email": email,
+            "password": bcrypt.generate_password_hash(password).decode('utf-8'),
+            "name": name
+        })
+        if push:
+            user.push()
+        return user
