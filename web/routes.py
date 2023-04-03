@@ -76,6 +76,21 @@ def top_products():
     cves = Product.get_top_products(min_date, max_date, page, page_size)
     return flask.jsonify(get_json_compatible(cves))
 
+@app.route("/api/v1.0/access_authentication")  # API ROUTE 5
+def access_authentication():
+    min_date = get_arg("min_date", default=MIN_DATE, coerce_type=datetime)
+    max_date = get_arg("max_date", default=datetime.now(), coerce_type=datetime)
+    bin_size = get_arg("bin_size", default="year", choices=("month", "year"))
+    data = CVE.get_binned_by_field("access_authentication", min_date, max_date, bin_size)
+    return flask.jsonify(get_json_compatible(data))
+
+@app.route("/api/v1.0/impact_availability")  # API ROUTE 6
+def impact_availability():
+    min_date = get_arg("min_date", default=MIN_DATE, coerce_type=datetime)
+    max_date = get_arg("max_date", default=datetime.now(), coerce_type=datetime)
+    bin_size = get_arg("bin_size", default="year", choices=("month", "year"))
+    data = CVE.get_binned_by_field("impact_availability", min_date, max_date, bin_size)
+    return flask.jsonify(get_json_compatible(data))
 
 def get_top_data_args():
     min_date = get_arg("min_date", default=MIN_DATE, coerce_type=datetime)
