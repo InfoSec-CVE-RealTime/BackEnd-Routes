@@ -24,23 +24,6 @@ class CVE(BaseDocument):
     }
 
     @classmethod
-    def get_top_vulnerability_types(cls, min_date, field, max_date, bin_size, as_dicts=True):
-        date_format = cls.get_bin_aggregate_date_format(bin_size)
-        cves = cls.collection.aggregate([
-            {"$match": {"pub_date": {"$gte": min_date, "$lte": max_date}}},
-            {"$project": {"pub_date": 1, field: 1}},
-            {"$group": {
-                "_id": {
-                    "field": "$" + field,
-                    "date": {"$dateToString": {"format": date_format, "date": "$pub_date"}}
-                },
-                "count": {"$sum": 1}
-            }},
-            {"$sort": {"_id.date": 1}}
-        ])
-        return list(cves) if as_dicts else [cls(cve) for cve in cves]
-
-    @classmethod
     def get_threat_proliferation(cls, min_date, max_date, bin_size, as_dicts=True):
         date_format = cls.get_bin_aggregate_date_format(bin_size)
         cves = cls.collection.aggregate([
@@ -54,10 +37,7 @@ class CVE(BaseDocument):
             }},
             {"$sort": {"_id.date": 1}}
         ])
-        return list(cves) if as_dicts else [cls(cve) for cve in cves]
-
-        #bin by year and return count
-
+        return cls.collect_data_by_bin(list(cves), min_date, max_date, bin_size, use_field=False)
 
     @classmethod
     def get_top_cves(cls, min_date, max_date, page, page_size, as_dicts=True):
@@ -88,7 +68,7 @@ class CVE(BaseDocument):
         return data
 
     @classmethod
-    def collect_data_by_bin(cls, cves, min_date, max_date, bin_size):
+    def collect_data_by_bin(cls, cves, min_date, max_date, bin_size, use_field=True):
         data = []
         date_format = cls.get_bin_aggregate_date_format(bin_size)
         current_date = min_date
@@ -96,7 +76,9 @@ class CVE(BaseDocument):
             data_date = current_date.strftime(date_format)
             current_bin = {"date": current_date.strftime("%Y-%m-%d")}
             for cve in cves:
-                if cve["_id"]["date"] == data_date and cve["_id"].get("field"):
+                if not use_field and cve["_id"]["date"] == data_date:
+                    current_bin["count"] = cve["count"]
+                elif cve["_id"]["date"] == data_date and cve["_id"].get("field"):
                     current_bin[cve["_id"]["field"]] = cve["count"]
             data.append(current_bin)
             current_date = cls.get_next_bin_date(current_date, bin_size)
