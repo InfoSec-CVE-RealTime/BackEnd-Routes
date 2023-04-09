@@ -23,6 +23,42 @@ class CVE(BaseDocument):
     }
 
     @classmethod
+    def get_top_vulnerability_types(cls, min_date, field, max_date, bin_size, as_dicts=True):
+        date_format = cls.get_bin_aggregate_date_format(bin_size)
+        cves = cls.collection.aggregate([
+            {"$match": {"pub_date": {"$gte": min_date, "$lte": max_date}}},
+            {"$project": {"pub_date": 1, field: 1}},
+            {"$group": {
+                "_id": {
+                    "field": "$" + field,
+                    "date": {"$dateToString": {"format": date_format, "date": "$pub_date"}}
+                },
+                "count": {"$sum": 1}
+            }},
+            {"$sort": {"_id.date": 1}}
+        ])
+        return list(cves) if as_dicts else [cls(cve) for cve in cves]
+
+    @classmethod
+    def get_threat_proliferation(cls, min_date, max_date, bin_size, as_dicts=True):
+        date_format = cls.get_bin_aggregate_date_format(bin_size)
+        cves = cls.collection.aggregate([
+            {"$match": {"pub_date": {"$gte": min_date, "$lte": max_date}}},
+            {"$project": {"pub_date": 1}},
+            {"$group": {
+                "_id": {
+                    "date": {"$dateToString": {"format": date_format, "date": "$pub_date"}}
+                },
+                "count": {"$sum": 1}
+            }},
+            {"$sort": {"_id.date": 1}}
+        ])
+        return list(cves) if as_dicts else [cls(cve) for cve in cves]
+
+        #bin by year and return count
+
+
+    @classmethod
     def get_top_cves(cls, min_date, max_date, page, page_size, as_dicts=True):
         cves = cls.collection.aggregate([
             {"$match": {"pub_date": {"$gte": min_date, "$lte": max_date}}},

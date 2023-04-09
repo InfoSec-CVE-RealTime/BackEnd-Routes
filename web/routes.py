@@ -1,3 +1,5 @@
+import json
+
 import flask
 from web import app
 from datetime import datetime
@@ -35,12 +37,33 @@ def access_vector():
     return flask.jsonify(get_json_compatible(data))
 
 
+@app.route("/api/v1.0/vulnerability_type")  # API ROUTE 7
+def vulnerability_type():
+    min_date = get_arg("min_date", default=MIN_DATE, coerce_type=datetime)
+    max_date = get_arg("max_date", default=datetime.now(), coerce_type=datetime)
+    bin_size = get_arg("bin_size", default="year", choices=("month", "year"))
+    data = CVE.get_top_vulnerability_types(min_date, "cwe_code", max_date, "month")
+    print(data)
+    return flask.jsonify(get_json_compatible(data))
+
+
+@app.route("/api/v1.0/threat_proliferation")  # API ROUTE 8
+def threat_proliferation():
+    min_date = get_arg("min_date", default=MIN_DATE, coerce_type=datetime)
+    max_date = get_arg("max_date", default=datetime.now(), coerce_type=datetime)
+    bin_size = get_arg("bin_size", default="year", choices=("month", "year"))
+    data = CVE.get_threat_proliferation(min_date, max_date, bin_size)
+    print(data)
+    return flask.jsonify(get_json_compatible(data))
+
+
+
+
 # @app.route("/api/v1.0/top_products")  # API ROUTE 4  -  DON'T USE! Doesn't work!
 # def top_products():
 #     min_date, max_date, page, page_size = get_top_data_args()
 #     cves = Product.get_top_products(min_date, max_date, page, page_size)
 #     return flask.jsonify(get_json_compatible(cves))
-
 
 def get_top_data_args():
     min_date = get_arg("min_date", default=MIN_DATE, coerce_type=datetime)
