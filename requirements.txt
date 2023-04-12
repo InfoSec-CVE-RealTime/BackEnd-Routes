@@ -2,6 +2,7 @@ itsdangerous
 wtforms
 Flask==1.1.4
 flask_script
+flask-cors
 markupsafe==2.0.1
 pymongo[snappy,gssapi,srv,tls]
 dnspython

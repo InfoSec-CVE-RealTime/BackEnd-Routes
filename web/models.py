@@ -192,19 +192,21 @@ class User(BaseDocument):
         user = User.find(search={"email": email}, one=True)
 
         if not user:
-            print("User does not exist")
+            print(f"User with email {email} does not exist")
             return None
 
         if bcrypt.check_password_hash(user["password"], password):
+            print(f"User with email {email} logged in successfully")
             return user
 
-        print("Wrong password")
+        print(f"Invalid password for user with email {email}")
         return None
+
 
     @staticmethod
     def create(email, name, password, push=True):
         if User.find(search={"email": email}, one=True):
-            print("Username already taken")
+            print(f"User with email {email} already exists")
             return None
 
         user = User({
@@ -214,6 +216,7 @@ class User(BaseDocument):
         })
         if push:
             user.push()
+            print(f"User with email {email} created successfully")
         return user
 
 

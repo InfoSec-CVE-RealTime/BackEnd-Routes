@@ -1,4 +1,5 @@
 import flask
+from flask_cors import cross_origin
 from web import app
 from datetime import datetime
 from web.models import CVE, Product, MIN_DATE, User
@@ -12,10 +13,14 @@ def home():
 
 
 @app.route("/api/v1.0/signup", methods=["POST"])
+@cross_origin()
 def signup():
-    email = flask.request.json.get("email")
-    name = flask.request.json.get("name")
-    password = flask.request.json.get("password")
+    data = flask.request.get_json()
+    # print(data)  
+    email = data.get("email")
+    name = data.get("name")
+    password = data.get("password")
+    print()
     if not email or not password:
         return flask.jsonify({"message": "Email, name, and password are required."}), 400
     user = User.create(email, name, password)
@@ -30,13 +35,14 @@ def signup():
 
 
 @app.route("/api/v1.0/login", methods=["POST"])
+@cross_origin()
 def login():
     email = flask.request.json.get("email")
     password = flask.request.json.get("password")
     if not email or not password:
         return flask.jsonify({"message": "Email and password are required."}), 400
     user = User.login(email, password)
-    if not user:
+    if user is None:
         return flask.jsonify({"message": "Invalid email or password."}), 400
     return flask.jsonify({
         "user": {

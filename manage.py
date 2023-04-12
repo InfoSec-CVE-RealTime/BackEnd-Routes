@@ -1,7 +1,9 @@
 from flask_script import Manager
+from flask_cors import CORS
 import os
 from web import app
 
+cors = CORS(app)
 manager = Manager(app)
 
 
