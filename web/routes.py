@@ -1,5 +1,6 @@
 import flask
 from flask_cors import cross_origin
+import traceback
 from web import app
 from datetime import datetime
 from web.models import CVE, Product, MIN_DATE, User
@@ -23,7 +24,11 @@ def signup():
     print()
     if not email or not password:
         return flask.jsonify({"message": "Email, name, and password are required."}), 400
-    user = User.create(email, name, password)
+    try:
+        user = User.create(email, name, password)
+    except Exception as e:
+        traceback.print_exc()
+        return flask.jsonify({"message": "An error occurred while creating the user."}), 500
     if not user:
         return flask.jsonify({"message": "User with that email already exists."}), 400
     return flask.jsonify({
@@ -32,6 +37,7 @@ def signup():
             "name": user["name"]
         }
     }), 201
+
 
 
 @app.route("/api/v1.0/login", methods=["POST"])
