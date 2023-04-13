@@ -83,9 +83,9 @@ def access_vector():
 
 @app.route("/api/v1.0/top_products")  # API ROUTE 4
 def top_products():
-    min_date, max_date = get_date_args()
+    min_date, _ = get_date_args(years_only=True)
     page, page_size = get_top_data_args()
-    data = Product.get_top_products(min_date, max_date, page, page_size)
+    data = Product.get_top_products(min_date.year, page, page_size)
     return flask.jsonify(get_json_compatible(data))
 
 
@@ -124,17 +124,19 @@ def threat_proliferation():
 
 @app.route("/api/v1.0/top_vendors")  # API ROUTE 9
 def top_vendors():
-    min_date, max_date = get_date_args()
+    min_date, _ = get_date_args(years_only=True)
     page, page_size = get_top_data_args()
-    data = Vendor.get_top_vendors(min_date, max_date, page, page_size)
+    data = Vendor.get_top_vendors(min_date.year, page, page_size)
     return flask.jsonify(get_json_compatible(data))
 
 
-def get_date_args():
+def get_date_args(years_only=False):
     """Have an argument called 'duration' that is a string of the form '1d', '4d', '1w', '1m', '3m', '6m', '1y',
     '3y', '5y', '10y', 'all' (default). Turn that into min_date and max_date variables."""
-    duration = get_arg("duration", default="all",
-                       choices=("1d", "4d", "1w", "1m", "3m", "6m", "1y", "3y", "5y", "10y", "all"))
+    choices = ("1d", "4d", "1w", "1m", "3m", "6m", "1y", "3y", "5y", "10y", "all")
+    if years_only:
+        choices = ("1y", "3y", "5y", "10y", "all")
+    duration = get_arg("duration", default="all", choices=choices)
     max_date = datetime.now()
     time_deltas = {
         "1d": timedelta(days=1),

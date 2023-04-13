@@ -105,41 +105,35 @@ class Product(BaseDocument):
     collection = db.products
     fields = {
         "cve_id": DataType(str, nullable=False),
+        "year": DataType(int, nullable=False),
         "vulnerable_product": DataType(str, nullable=False)
     }
 
     @classmethod
-    def get_top_products(cls, min_date, max_date, page, page_size, as_dicts=True):
+    def get_top_products(cls, min_year, page, page_size, as_dicts=True):
         """Get the top products by number of CVEs in a given date range. Since the date of a CVE is in the CVE
         collection, this method uses an aggregate query to join the CVE and Product collections."""
 
         pipeline = [
-            {"$lookup": {
-                    "from": Product.collection.name,
-                    "localField": "cve_id",
-                    "foreignField": "cve_id",
-                    "as": "products"
-            }},
-            {"$unwind": "$products"},
             {"$match": {
-                    "products.vulnerable_product": {"$exists": True},
-                    "pub_date": {"$gte": min_date, "$lte": max_date}
+                "vulnerable_product": {"$exists": True},
+                "year": {"$gte": min_year}
             }},
             {"$group": {
-                    "_id": "$products.vulnerable_product",
-                    "count": {"$sum": 1}
+                "_id": "$vulnerable_product",
+                "count": {"$sum": 1}
             }},
             {"$sort": {"count": -1}},
             {"$skip": page * page_size},
             {"$limit": page_size},
             {"$project": {
-                    "_id": 0,
-                    "product": "$_id",
-                    "count": 1
+                "_id": 0,
+                "product": "$_id",
+                "count": 1
             }}
         ]
 
-        products = CVE.collection.aggregate(pipeline)
+        products = cls.collection.aggregate(pipeline)
         return list(products) if as_dicts else [cls(product) for product in products]
 
 
@@ -155,41 +149,35 @@ class Vendor(BaseDocument):
     collection = db.vendors
     fields = {
         "cve_id": DataType(str, nullable=False),
+        "year": DataType(int, nullable=False),
         "vendor": DataType(str, nullable=False)
     }
 
     @classmethod
-    def get_top_vendors(cls, min_date, max_date, page, page_size, as_dicts=True):
+    def get_top_vendors(cls, min_year, page, page_size, as_dicts=True):
         """Get the top vendors by number of CVEs in a given date range. Since the date of a CVE is in the CVE
         collection, this method uses an aggregate query to join the CVE and Vendor collections."""
 
         pipeline = [
-            {"$lookup": {
-                    "from": Vendor.collection.name,
-                    "localField": "cve_id",
-                    "foreignField": "cve_id",
-                    "as": "vendors"
-            }},
-            {"$unwind": "$vendors"},
             {"$match": {
-                    "vendors.vendor": {"$exists": True},
-                    "pub_date": {"$gte": min_date, "$lte": max_date}
+                "vendor": {"$exists": True},
+                "year": {"$gte": min_year}
             }},
             {"$group": {
-                    "_id": "$vendors.vendor",
-                    "count": {"$sum": 1}
+                "_id": "$vendor",
+                "count": {"$sum": 1}
             }},
             {"$sort": {"count": -1}},
             {"$skip": page * page_size},
             {"$limit": page_size},
             {"$project": {
-                    "_id": 0,
-                    "vendor": "$_id",
-                    "count": 1
+                "_id": 0,
+                "vendor": "$_id",
+                "count": 1
             }}
         ]
 
-        vendors = CVE.collection.aggregate(pipeline)
+        vendors = Vendor.collection.aggregate(pipeline)
         return list(vendors) if as_dicts else [cls(vendor) for vendor in vendors]
 
 
