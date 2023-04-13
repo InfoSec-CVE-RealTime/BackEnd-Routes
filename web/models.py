@@ -24,7 +24,7 @@ class CVE(BaseDocument):
     }
 
     @classmethod
-    def get_threat_proliferation(cls, min_date, max_date, bin_size, as_dicts=True):
+    def get_threat_proliferation(cls, min_date, max_date, bin_size):
         date_format = cls.get_bin_aggregate_date_format(bin_size)
         cves = cls.collection.aggregate([
             {"$match": {"pub_date": {"$gte": min_date, "$lte": max_date}}},
@@ -114,45 +114,29 @@ class Product(BaseDocument):
         collection, this method uses an aggregate query to join the CVE and Product collections."""
 
         pipeline = [
-            {
-                "$lookup": {
+            {"$lookup": {
                     "from": Product.collection.name,
                     "localField": "cve_id",
                     "foreignField": "cve_id",
                     "as": "products"
-                }
-            },
-            {
-                "$unwind": "$products"
-            },
-            {
-                "$match": {
+            }},
+            {"$unwind": "$products"},
+            {"$match": {
                     "products.vulnerable_product": {"$exists": True},
                     "pub_date": {"$gte": min_date, "$lte": max_date}
-                }
-            },
-            {
-                "$group": {
+            }},
+            {"$group": {
                     "_id": "$products.vulnerable_product",
                     "count": {"$sum": 1}
-                }
-            },
-            {
-                "$sort": {"count": -1}
-            },
-            {
-                "$skip": page * page_size
-            },
-            {
-                "$limit": page_size
-            },
-            {
-                "$project": {
+            }},
+            {"$sort": {"count": -1}},
+            {"$skip": page * page_size},
+            {"$limit": page_size},
+            {"$project": {
                     "_id": 0,
                     "product": "$_id",
                     "count": 1
-                }
-            }
+            }}
         ]
 
         products = CVE.collection.aggregate(pipeline)
@@ -173,6 +157,40 @@ class Vendor(BaseDocument):
         "cve_id": DataType(str, nullable=False),
         "vendor": DataType(str, nullable=False)
     }
+
+    @classmethod
+    def get_top_vendors(cls, min_date, max_date, page, page_size, as_dicts=True):
+        """Get the top vendors by number of CVEs in a given date range. Since the date of a CVE is in the CVE
+        collection, this method uses an aggregate query to join the CVE and Vendor collections."""
+
+        pipeline = [
+            {"$lookup": {
+                    "from": Vendor.collection.name,
+                    "localField": "cve_id",
+                    "foreignField": "cve_id",
+                    "as": "vendors"
+            }},
+            {"$unwind": "$vendors"},
+            {"$match": {
+                    "vendors.vendor": {"$exists": True},
+                    "pub_date": {"$gte": min_date, "$lte": max_date}
+            }},
+            {"$group": {
+                    "_id": "$vendors.vendor",
+                    "count": {"$sum": 1}
+            }},
+            {"$sort": {"count": -1}},
+            {"$skip": page * page_size},
+            {"$limit": page_size},
+            {"$project": {
+                    "_id": 0,
+                    "vendor": "$_id",
+                    "count": 1
+            }}
+        ]
+
+        vendors = CVE.collection.aggregate(pipeline)
+        return list(vendors) if as_dicts else [cls(vendor) for vendor in vendors]
 
 
 class User(BaseDocument):
@@ -201,7 +219,6 @@ class User(BaseDocument):
 
         print(f"Invalid password for user with email {email}")
         return None
-
 
     @staticmethod
     def create(email, name, password, push=True):
