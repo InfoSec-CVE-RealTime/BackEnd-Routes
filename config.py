@@ -12,4 +12,4 @@ class Config(object):
 
 
 class DevelopmentConfig(Config):
-    DEBUG = True
+    DEBUG = False

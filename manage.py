@@ -4,10 +4,10 @@ import os
 from web import app
 
 CORS(app, resources={r"/*": {"origins": "*"}})
-app.config['CORS_ALLOW_METHODS'] = ['GET', 'POST', 'PUT', 'DELETE']
 app.config['CORS_ALLOW_HEADERS'] = ['Content-Type', 'Authorization']
+app.config['CORS_ALLOW_METHODS'] = ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS']
 manager = Manager(app)
-app.debug = True
+#app.debug = True
 
 
 

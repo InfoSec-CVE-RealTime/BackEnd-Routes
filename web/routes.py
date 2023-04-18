@@ -7,7 +7,6 @@ from web.models import CVE, Product, MIN_DATE, User, Vendor
 from web.db import get_json_compatible
 from web.cwe_names.replace_cwe_codes_with_names import replace_cwe_codes_with_names
 
-
 @app.route("/")
 def home():
     return flask.jsonify({"message": "Hello World!"})
@@ -40,6 +39,7 @@ def signup():
 
 
 @app.route("/api/v1.0/login", methods=["POST"])
+# @cross_origin(origin='localhost',headers=['Content-Type','Authorization'])
 @cross_origin()
 def login():
     email = flask.request.json.get("email")
@@ -49,12 +49,17 @@ def login():
     user = User.login(email, password)
     if user is None:
         return flask.jsonify({"message": "Invalid email or password."}), 400
-    return flask.jsonify({
-        "user": {
-            "email": user["email"],
-            "name": user["name"]
+    print(user)
+    response = flask.jsonify(
+        {
+            "email": email,
+            "name": password
         }
-    }), 200
+    )
+    # response.headers.add("Access-Control-Allow-Origin", "*")
+    # response.headers.add("Access-Control-Allow-Headers", "*")
+    # response.headers.add("Access-Control-Allow-Methods", "*")
+    return response, 200
 
 
 @app.route("/api/v1.0/top_cves")  # API ROUTE 1
@@ -91,7 +96,8 @@ def top_products():
 
 @app.route("/api/v1.0/access_authentication")  # API ROUTE 5
 def access_authentication():
-    min_date, max_date = get_date_args()
+    min_date = get_arg("min_date", default=MIN_DATE, coerce_type=datetime)
+    max_date = get_arg("max_date", default=datetime.now(), coerce_type=datetime)
     bin_size = get_arg("bin_size", default="year", choices=("month", "year"))
     data = CVE.get_binned_by_field("access_authentication", min_date, max_date, bin_size)
     return flask.jsonify(get_json_compatible(data))
