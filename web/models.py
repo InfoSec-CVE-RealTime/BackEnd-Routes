@@ -24,24 +24,7 @@ class CVE(BaseDocument):
     }
 
     @classmethod
-    def get_top_vulnerability_types(cls, min_date, field, max_date, bin_size, as_dicts=True):
-        date_format = cls.get_bin_aggregate_date_format(bin_size)
-        cves = cls.collection.aggregate([
-            {"$match": {"pub_date": {"$gte": min_date, "$lte": max_date}}},
-            {"$project": {"pub_date": 1, field: 1}},
-            {"$group": {
-                "_id": {
-                    "field": "$" + field,
-                    "date": {"$dateToString": {"format": date_format, "date": "$pub_date"}}
-                },
-                "count": {"$sum": 1}
-            }},
-            {"$sort": {"_id.date": 1}}
-        ])
-        return list(cves) if as_dicts else [cls(cve) for cve in cves]
-
-    @classmethod
-    def get_threat_proliferation(cls, min_date, max_date, bin_size, as_dicts=True):
+    def get_threat_proliferation(cls, min_date, max_date, bin_size):
         date_format = cls.get_bin_aggregate_date_format(bin_size)
         cves = cls.collection.aggregate([
             {"$match": {"pub_date": {"$gte": min_date, "$lte": max_date}}},
@@ -54,9 +37,7 @@ class CVE(BaseDocument):
             }},
             {"$sort": {"_id.date": 1}}
         ])
-        return list(cves) if as_dicts else [cls(cve) for cve in cves]
-
-        # bin by year and return count
+        return cls.collect_data_by_bin(list(cves), min_date, max_date, bin_size, use_field=False)
 
     @classmethod
     def get_top_cves(cls, min_date, max_date, page, page_size, as_dicts=True):
@@ -87,7 +68,7 @@ class CVE(BaseDocument):
         return data
 
     @classmethod
-    def collect_data_by_bin(cls, cves, min_date, max_date, bin_size):
+    def collect_data_by_bin(cls, cves, min_date, max_date, bin_size, use_field=True):
         data = []
         date_format = cls.get_bin_aggregate_date_format(bin_size)
         current_date = min_date
@@ -95,7 +76,9 @@ class CVE(BaseDocument):
             data_date = current_date.strftime(date_format)
             current_bin = {"date": current_date.strftime("%Y-%m-%d")}
             for cve in cves:
-                if cve["_id"]["date"] == data_date and cve["_id"].get("field"):
+                if not use_field and cve["_id"]["date"] == data_date:
+                    current_bin["count"] = cve["count"]
+                elif cve["_id"]["date"] == data_date and cve["_id"].get("field"):
                     current_bin[cve["_id"]["field"]] = cve["count"]
             data.append(current_bin)
             current_date = cls.get_next_bin_date(current_date, bin_size)
@@ -150,57 +133,35 @@ class Product(BaseDocument):
     collection = db.products
     fields = {
         "cve_id": DataType(str, nullable=False),
+        "year": DataType(int, nullable=False),
         "vulnerable_product": DataType(str, nullable=False)
     }
 
     @classmethod
-    def get_top_products(cls, min_date, max_date, page, page_size, as_dicts=True):
+    def get_top_products(cls, min_year, page, page_size, as_dicts=True):
         """Get the top products by number of CVEs in a given date range. Since the date of a CVE is in the CVE
         collection, this method uses an aggregate query to join the CVE and Product collections."""
 
         pipeline = [
-            {
-                "$lookup": {
-                    "from": Product.collection.name,
-                    "localField": "cve_id",
-                    "foreignField": "cve_id",
-                    "as": "products"
-                }
-            },
-            {
-                "$unwind": "$products"
-            },
-            {
-                "$match": {
-                    "products.vulnerable_product": {"$exists": True},
-                    "pub_date": {"$gte": min_date, "$lte": max_date}
-                }
-            },
-            {
-                "$group": {
-                    "_id": "$products.vulnerable_product",
-                    "count": {"$sum": 1}
-                }
-            },
-            {
-                "$sort": {"count": -1}
-            },
-            {
-                "$skip": page * page_size
-            },
-            {
-                "$limit": page_size
-            },
-            {
-                "$project": {
-                    "_id": 0,
-                    "product": "$_id",
-                    "count": 1
-                }
-            }
+            {"$match": {
+                "vulnerable_product": {"$exists": True},
+                "year": {"$gte": min_year}
+            }},
+            {"$group": {
+                "_id": "$vulnerable_product",
+                "count": {"$sum": 1}
+            }},
+            {"$sort": {"count": -1}},
+            {"$skip": page * page_size},
+            {"$limit": page_size},
+            {"$project": {
+                "_id": 0,
+                "product": "$_id",
+                "count": 1
+            }}
         ]
 
-        products = CVE.collection.aggregate(pipeline)
+        products = cls.collection.aggregate(pipeline)
         return list(products) if as_dicts else [cls(product) for product in products]
 
 
@@ -216,8 +177,36 @@ class Vendor(BaseDocument):
     collection = db.vendors
     fields = {
         "cve_id": DataType(str, nullable=False),
+        "year": DataType(int, nullable=False),
         "vendor": DataType(str, nullable=False)
     }
+
+    @classmethod
+    def get_top_vendors(cls, min_year, page, page_size, as_dicts=True):
+        """Get the top vendors by number of CVEs in a given date range. Since the date of a CVE is in the CVE
+        collection, this method uses an aggregate query to join the CVE and Vendor collections."""
+
+        pipeline = [
+            {"$match": {
+                "vendor": {"$exists": True},
+                "year": {"$gte": min_year}
+            }},
+            {"$group": {
+                "_id": "$vendor",
+                "count": {"$sum": 1}
+            }},
+            {"$sort": {"count": -1}},
+            {"$skip": page * page_size},
+            {"$limit": page_size},
+            {"$project": {
+                "_id": 0,
+                "vendor": "$_id",
+                "count": 1
+            }}
+        ]
+
+        vendors = Vendor.collection.aggregate(pipeline)
+        return list(vendors) if as_dicts else [cls(vendor) for vendor in vendors]
 
 
 class User(BaseDocument):
@@ -237,19 +226,20 @@ class User(BaseDocument):
         user = User.find(search={"email": email}, one=True)
 
         if not user:
-            print("User does not exist")
+            print(f"User with email {email} does not exist")
             return None
 
         if bcrypt.check_password_hash(user["password"], password):
+            print(f"User with email {email} logged in successfully")
             return user
 
-        print("Wrong password")
+        print(f"Invalid password for user with email {email}")
         return None
 
     @staticmethod
     def create(email, name, password, push=True):
         if User.find(search={"email": email}, one=True):
-            print("Username already taken")
+            print(f"User with email {email} already exists")
             return None
 
         user = User({
@@ -259,6 +249,7 @@ class User(BaseDocument):
         })
         if push:
             user.push()
+            print(f"User with email {email} created successfully")
         return user
 
 
