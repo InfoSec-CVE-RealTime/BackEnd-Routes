@@ -3,7 +3,7 @@ import json
 import flask
 from web import app
 from datetime import datetime
-from web.models import CVE, Product, MIN_DATE, User
+from web.models import CVE, Product, MIN_DATE, User, CVEOld
 from web.db import get_json_compatible
 
 
@@ -92,8 +92,6 @@ def threat_proliferation():
     return flask.jsonify(get_json_compatible(data))
 
 
-
-
 # @app.route("/api/v1.0/top_products")  # API ROUTE 4  -  DON'T USE! Doesn't work!
 # def top_products():
 #     min_date, max_date, page, page_size = get_top_data_args()
@@ -106,6 +104,7 @@ def top_products():
     cves = Product.get_top_products(min_date, max_date, page, page_size)
     return flask.jsonify(get_json_compatible(cves))
 
+
 @app.route("/api/v1.0/access_authentication")  # API ROUTE 5
 def access_authentication():
     min_date = get_arg("min_date", default=MIN_DATE, coerce_type=datetime)
@@ -114,6 +113,7 @@ def access_authentication():
     data = CVE.get_binned_by_field("access_authentication", min_date, max_date, bin_size)
     return flask.jsonify(get_json_compatible(data))
 
+
 @app.route("/api/v1.0/impact_availability")  # API ROUTE 6
 def impact_availability():
     min_date = get_arg("min_date", default=MIN_DATE, coerce_type=datetime)
@@ -121,6 +121,16 @@ def impact_availability():
     bin_size = get_arg("bin_size", default="year", choices=("month", "year"))
     data = CVE.get_binned_by_field("impact_availability", min_date, max_date, bin_size)
     return flask.jsonify(get_json_compatible(data))
+
+
+@app.route("/api/v1.0/cve_old")
+def cve_old_data():
+    min_date = get_arg("min_date", default=MIN_DATE, coerce_type=datetime)
+    max_date = get_arg("max_date", default=datetime.now(), coerce_type=datetime)
+    bin_size = get_arg("bin_size", default="year", choices=("month", "year"))
+    data = CVEOld.get_data_by_date(min_date, max_date, bin_size)
+    return flask.jsonify(get_json_compatible(data))
+
 
 def get_top_data_args():
     min_date = get_arg("min_date", default=MIN_DATE, coerce_type=datetime)

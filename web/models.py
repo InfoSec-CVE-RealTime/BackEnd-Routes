@@ -56,8 +56,7 @@ class CVE(BaseDocument):
         ])
         return list(cves) if as_dicts else [cls(cve) for cve in cves]
 
-        #bin by year and return count
-
+        # bin by year and return count
 
     @classmethod
     def get_top_cves(cls, min_date, max_date, page, page_size, as_dicts=True):
@@ -117,6 +116,34 @@ class CVE(BaseDocument):
             next_month = current_date.month + 1 if current_date.month < 12 else 1
             next_year = current_date.year + 1 if next_month == 1 else current_date.year
             return current_date.replace(year=next_year, month=next_month)
+
+
+class CVEOld(BaseDocument):
+    collection = db.cve
+    fields = {
+        "cve_id": DataType(str, nullable=False),
+        "pub_date": DataType(datetime, nullable=False),
+        "mod_date": DataType(datetime, nullable=False),
+        "cvss": DataType(float, nullable=False),
+        "cwe_code": DataType(int, nullable=False),
+        "cwe_name": DataType(str, nullable=False),
+        "summary": DataType(str, nullable=False),
+        "access_vector": DataType(str, nullable=True),
+        "access_complexity": DataType(str, nullable=True),
+        "access_authentication": DataType(str, nullable=True),
+        "impact_availability": DataType(str, nullable=True),
+        "impact_confidentiality": DataType(str, nullable=True),
+        "impact_integrity": DataType(str, nullable=True)
+    }
+
+    @classmethod
+    def get_data_by_date(cls, min_date, max_date, bin_size):
+        cves = cls.collection.aggregate([
+            {"$match": {"pub_date": {"$gte": min_date, "$lte": max_date}}},
+            {"$project": {"pub_date": 1, "cve_id": 1, "cvss": 1, "cwe_code": 1, "cwe_name": 1, "summary": 1,
+                          "mod_date": 1}},
+        ])
+        return list(cves)
 
 
 class Product(BaseDocument):
