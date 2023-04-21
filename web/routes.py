@@ -33,6 +33,7 @@ def signup():
         return flask.jsonify({"message": "User with that email already exists."}), 400
     return flask.jsonify({
         "user": {
+            "user_id": str(user["_id"]),
             "email": user["email"],
             "name": user["name"]
         }
@@ -51,6 +52,24 @@ def login():
         return flask.jsonify({"message": "Invalid email or password."}), 400
     return flask.jsonify({
         "user": {
+            "user_id": str(user["_id"]),
+            "email": user["email"],
+            "name": user["name"]
+        }
+    }), 200
+
+
+@app.route("/api/v1.0/user_session")
+def get_user_session():
+    user_id = flask.session.get("user_id")
+    if not user_id:
+        return flask.jsonify({"message": "No user session found."}), 404
+    user = User.from_id(user_id)
+    if not user:
+        return flask.jsonify({"message": "No user session found."}), 404
+    return flask.jsonify({
+        "user": {
+            "user_id": str(user["_id"]),
             "email": user["email"],
             "name": user["name"]
         }
