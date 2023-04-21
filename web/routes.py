@@ -7,6 +7,7 @@ from web.models import CVE, Product, MIN_DATE, User, Vendor
 from web.db import get_json_compatible
 from web.cwe_names.replace_cwe_codes_with_names import replace_cwe_codes_with_names
 
+
 @app.route("/")
 def home():
     return flask.jsonify({"message": "Hello World!"})
@@ -32,6 +33,7 @@ def signup():
         return flask.jsonify({"message": "User with that email already exists."}), 400
     return flask.jsonify({
         "user": {
+            "user_id": str(user["_id"]),
             "email": user["email"],
             "name": user["name"]
         }
@@ -49,9 +51,9 @@ def login():
     user = User.login(email, password)
     if user is None:
         return flask.jsonify({"message": "Invalid email or password."}), 400
-    print(user)
     response = flask.jsonify(
         {
+            "user_id": str(user["_id"]),
             "email": email,
             "name": password
         }
@@ -60,6 +62,22 @@ def login():
     # response.headers.add("Access-Control-Allow-Headers", "*")
     # response.headers.add("Access-Control-Allow-Methods", "*")
     return response, 200
+
+
+@app.route("/api/v1.0/user_session")
+def get_user_session():
+    user_id = flask.session.get("user_id")
+    if not user_id:
+        return flask.jsonify({"message": "No user session found."}), 404
+    user = User.from_id(user_id)
+    if not user:
+        return flask.jsonify({"message": "No user session found."}), 404
+    return flask.jsonify({
+        "user": {
+            "user_id": str(user["_id"]),
+            "email": user["email"],
+            "name": user["name"]
+        }}), 200
 
 
 @app.route("/api/v1.0/top_cves")  # API ROUTE 1
