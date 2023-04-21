@@ -3,7 +3,7 @@ from flask_cors import cross_origin
 import traceback
 from web import app
 from datetime import datetime, timedelta
-from web.models import CVE, Product, MIN_DATE, User, Vendor
+from web.models import CVE, Product, MIN_DATE, User, Vendor, CVEOld
 from web.db import get_json_compatible
 from web.cwe_names.replace_cwe_codes_with_names import replace_cwe_codes_with_names
 
@@ -64,9 +64,9 @@ def login():
     return response, 200
 
 
-@app.route("/api/v1.0/user_session")
+@app.route("/api/v1.0/user_session", methods=["POST"])
 def get_user_session():
-    user_id = flask.session.get("user_id")
+    user_id = flask.request.json.get("user_id")
     if not user_id:
         return flask.jsonify({"message": "No user session found."}), 404
     user = User.from_id(user_id)
@@ -110,7 +110,6 @@ def top_products():
     page, page_size = get_top_data_args()
     data = Product.get_top_products(min_year, page, page_size)
     return flask.jsonify(get_json_compatible(data))
-
 
 
 @app.route("/api/v1.0/access_authentication")  # API ROUTE 5
@@ -188,7 +187,6 @@ def get_date_args():
     else:
         min_date = max_date - time_deltas[duration]
     return min_date, max_date
-
 
 
 @app.route("/api/v1.0/cve_old")
