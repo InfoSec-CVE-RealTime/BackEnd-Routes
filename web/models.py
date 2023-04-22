@@ -214,7 +214,8 @@ class User(BaseDocument):
     fields = {
         "email": DataType(str, nullable=False),
         "name": DataType(str, nullable=False),
-        "password": DataType(str, nullable=False)
+        "password": DataType(str, nullable=False),
+        "subscribed": DataType(bool, nullable=False, default=False),
     }
 
     def get_id(self):

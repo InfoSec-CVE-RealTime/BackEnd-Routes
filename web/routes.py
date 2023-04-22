@@ -35,7 +35,8 @@ def signup():
         "user": {
             "user_id": str(user["_id"]),
             "email": user["email"],
-            "name": user["name"]
+            "name": user["name"],
+            "subscribed": user["subscribed"]
         }
     }), 201
 
@@ -55,7 +56,8 @@ def login():
         {
             "user_id": str(user["_id"]),
             "email": email,
-            "name": password
+            "name": password,
+            "subscribed": user["subscribed"]
         }
     )
     # response.headers.add("Access-Control-Allow-Origin", "*")
@@ -76,8 +78,21 @@ def get_user_session():
         "user": {
             "user_id": str(user["_id"]),
             "email": user["email"],
-            "name": user["name"]
+            "name": user["name"],
+            "subscribed": user["subscribed"]
         }}), 200
+
+
+@app.route("/api/v1.0/set_subscription", methods=["POST"])
+def set_subscription():
+    user_id = flask.request.json.get("user_id")
+    subscribe = bool(flask.request.json.get("subscribe"))
+    user = User.from_id(user_id)
+    if not user:
+        return flask.jsonify({"message": "No user session found."}), 404
+    user["subscribed"] = subscribe
+    user.push()
+    return flask.jsonify({"message": "Subscription updated."}), 200
 
 
 @app.route("/api/v1.0/top_cves")  # API ROUTE 1
