@@ -92,7 +92,13 @@ def set_subscription():
         return flask.jsonify({"message": "No user session found."}), 404
     user["subscribed"] = subscribe
     user.push()
-    return flask.jsonify({"message": "Subscription updated."}), 200
+    return flask.jsonify({
+        "user": {
+            "user_id": str(user["_id"]),
+            "email": user["email"],
+            "name": user["name"],
+            "subscribed": user["subscribed"]
+        }}), 200
 
 
 @app.route("/api/v1.0/top_cves")  # API ROUTE 1
