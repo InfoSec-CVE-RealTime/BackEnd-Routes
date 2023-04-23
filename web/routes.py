@@ -3,7 +3,7 @@ from flask_cors import cross_origin
 import traceback
 from web import app
 from datetime import datetime, timedelta
-from web.models import CVE, Product, MIN_DATE, User, Vendor
+from web.models import CVE, Product, MIN_DATE, User, Vendor, CVEOld
 from web.db import get_json_compatible
 from web.cwe_names.replace_cwe_codes_with_names import replace_cwe_codes_with_names
 
@@ -17,7 +17,7 @@ def home():
 @cross_origin()
 def signup():
     data = flask.request.get_json()
-    # print(data)  
+    # print(data)
     email = data.get("email")
     name = data.get("name")
     password = data.get("password")
@@ -35,12 +35,14 @@ def signup():
         "user": {
             "user_id": str(user["_id"]),
             "email": user["email"],
-            "name": user["name"]
+            "name": user["name"],
+            "subscribed": user["subscribed"]
         }
     }), 201
 
 
 @app.route("/api/v1.0/login", methods=["POST"])
+# @cross_origin(origin='localhost',headers=['Content-Type','Authorization'])
 @cross_origin()
 def login():
     email = flask.request.json.get("email")
@@ -50,18 +52,23 @@ def login():
     user = User.login(email, password)
     if user is None:
         return flask.jsonify({"message": "Invalid email or password."}), 400
-    return flask.jsonify({
-        "user": {
+    response = flask.jsonify(
+        {
             "user_id": str(user["_id"]),
-            "email": user["email"],
-            "name": user["name"]
+            "email": email,
+            "name": password,
+            "subscribed": user["subscribed"]
         }
-    }), 200
+    )
+    # response.headers.add("Access-Control-Allow-Origin", "*")
+    # response.headers.add("Access-Control-Allow-Headers", "*")
+    # response.headers.add("Access-Control-Allow-Methods", "*")
+    return response, 200
 
 
-@app.route("/api/v1.0/user_session")
+@app.route("/api/v1.0/user_session", methods=["POST"])
 def get_user_session():
-    user_id = flask.session.get("user_id")
+    user_id = flask.request.json.get("user_id")
     if not user_id:
         return flask.jsonify({"message": "No user session found."}), 404
     user = User.from_id(user_id)
@@ -71,9 +78,28 @@ def get_user_session():
         "user": {
             "user_id": str(user["_id"]),
             "email": user["email"],
-            "name": user["name"]
+            "name": user["name"],
+            "subscribed": user["subscribed"]
         }
     }), 200
+
+
+@app.route("/api/v1.0/set_subscription", methods=["POST"])
+def set_subscription():
+    user_id = flask.request.json.get("user_id")
+    subscribe = bool(flask.request.json.get("subscribe"))
+    user = User.from_id(user_id)
+    if not user:
+        return flask.jsonify({"message": "No user session found."}), 404
+    user["subscribed"] = subscribe
+    user.push()
+    return flask.jsonify({
+        "user": {
+            "user_id": str(user["_id"]),
+            "email": user["email"],
+            "name": user["name"],
+            "subscribed": user["subscribed"]
+        }}), 200
 
 
 @app.route("/api/v1.0/top_cves")  # API ROUTE 1
@@ -110,7 +136,8 @@ def top_products():
 
 @app.route("/api/v1.0/access_authentication")  # API ROUTE 5
 def access_authentication():
-    min_date, max_date = get_date_args()
+    min_date = get_arg("min_date", default=MIN_DATE, coerce_type=datetime)
+    max_date = get_arg("max_date", default=datetime.now(), coerce_type=datetime)
     bin_size = get_arg("bin_size", default="year", choices=("month", "year"))
     data = CVE.get_binned_by_field("access_authentication", min_date, max_date, bin_size)
     return flask.jsonify(get_json_compatible(data))
@@ -182,6 +209,15 @@ def get_date_args():
     else:
         min_date = max_date - time_deltas[duration]
     return min_date, max_date
+
+
+@app.route("/api/v1.0/cve_old")
+def cve_old_data():
+    min_date = get_arg("min_date", default=MIN_DATE, coerce_type=datetime)
+    max_date = get_arg("max_date", default=datetime.now(), coerce_type=datetime)
+    bin_size = get_arg("bin_size", default="year", choices=("month", "year"))
+    data = CVEOld.get_data_by_date(min_date, max_date, bin_size)
+    return flask.jsonify(get_json_compatible(data))
 
 
 def get_top_data_args():

@@ -1,4 +1,4 @@
-itsdangerous
+itsdangerous==1.1.0
 wtforms
 Flask==1.1.4
 flask_script
