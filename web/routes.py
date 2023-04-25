@@ -154,10 +154,32 @@ def impact_availability():
 @app.route("/api/v1.0/vulnerability_type")  # API ROUTE 7
 def vulnerability_type():
     min_date, max_date = get_date_args()
-    bin_size = get_arg("bin_size", default="year", choices=("month", "year"))
+    bin_size = get_arg("bin_size", default="month", choices=("month", "year"))
     data = CVE.get_binned_by_field("cwe_code", min_date, max_date, bin_size)
     data = replace_cwe_codes_with_names(data)
+    data = filter_top_items(data, 5)
     return flask.jsonify(get_json_compatible(data))
+
+
+def filter_top_items(data, top_number):
+    totals = {}
+    for block in data:
+        for item in block:
+            if item in ["date", "Unclassified Vulnerability"]:
+                continue
+            totals[item] = totals.get(item, 0) + block[item]
+    top_items = sorted(totals, key=totals.get, reverse=True)[:top_number]
+    filtered_data = []
+    for block in data:
+        # skip years before 2008
+        year = int(block["date"][:4])
+        if year < 2013:
+            continue
+        filtered_block = {"date": block["date"]}
+        for item in top_items:
+            filtered_block[item] = block.get(item, 0)
+        filtered_data.append(filtered_block)
+    return filtered_data
 
 
 @app.route("/api/v1.0/threat_proliferation")  # API ROUTE 8
