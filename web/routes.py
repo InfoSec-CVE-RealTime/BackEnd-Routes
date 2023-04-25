@@ -212,18 +212,33 @@ def get_vendors():
 
 @app.route("/api/v1.0/product_history")  # API ROUTE 12
 def product_history():
-    product = get_arg("product", default=None, coerce_type=str)
+    products = flask.request.args.get("products") or ""
+    products = products.split(",")
     min_date, max_date = get_year_args()
-    data = Product.get_product_history(product, min_date, max_date)
+    data = Product.get_product_history(products, min_date, max_date)
+    data = get_history_totals(products, data)
     return flask.jsonify(get_json_compatible(data))
 
 
 @app.route("/api/v1.0/vendor_history")  # API ROUTE 13
 def vendor_history():
-    vendor = get_arg("vendor", default=None, coerce_type=str)
+    vendors = flask.request.args.get("vendors") or ""
+    vendors = vendors.split(",")
     min_date, max_date = get_year_args()
-    data = Vendor.get_vendor_history(vendor, min_date, max_date)
+    data = Vendor.get_vendor_history(vendors, min_date, max_date)
+    data = get_history_totals(vendors, data)
     return flask.jsonify(get_json_compatible(data))
+
+
+def get_history_totals(products, data):
+    new_blocks = []
+    for block in data:
+        new_block = {"date": block["year"], "total": 0}
+        for product in products:
+            new_block[product] = block.get(product, 0)
+            new_block["total"] += new_block[product]
+        new_blocks.append(new_block)
+    return new_blocks
 
 
 def get_year_args():

@@ -179,6 +179,12 @@ class Product(BaseDocument):
         ])
         return [product["product"] for product in products]
 
+    @classmethod
+    def get_product_history(cls, products, min_year, max_year):
+        """Given a list of products, return the number of CVEs for each product in each year."""
+        pipeline = get_history_pipeline(products, min_year, max_year)
+        product_history = list(cls.collection.aggregate(pipeline))
+        return format_history_data(product_history)
 
 
 class VendorProduct(BaseDocument):
@@ -237,6 +243,58 @@ class Vendor(BaseDocument):
             }}
         ])
         return [vendor["vendor"] for vendor in vendors]
+
+    @classmethod
+    def get_vendor_history(cls, vendors, min_year, max_year):
+        """Given a list of vendors, return the number of CVEs for each vendor in each year."""
+        pipeline = get_history_pipeline(vendors, min_year, max_year, is_product=False)
+        vendor_history = list(cls.collection.aggregate(pipeline))
+        return format_history_data(vendor_history)
+
+
+def get_history_pipeline(items, min_year, max_year, is_product=True):
+    """Given a list of products or vendors, return the number of CVEs for each product or vendor in each year."""
+    pipeline = [
+        {"$match": {
+            "vulnerable_product" if is_product else "vendor": {"$in": items},
+            "year": {"$gte": min_year, "$lte": max_year}
+        }},
+        {"$group": {
+            "_id": {
+                "item": "$vulnerable_product" if is_product else "$vendor",
+                "year": "$year"
+            },
+            "count": {"$sum": 1}
+        }},
+
+        # group by year to get a list of products for each year
+        {"$group": {
+            "_id": "$_id.year",
+            "items": {"$push": {
+                "item": "$_id.item",
+                "count": "$count"
+            }}
+        }},
+        {"$sort": {"_id": 1}},
+        {"$project": {
+            "_id": 0,
+            "year": "$_id",
+            "items": 1
+        }}
+    ]
+
+    return pipeline
+
+
+def format_history_data(data):
+    """Given a list of products or vendors, return the number of CVEs for each product or vendor in each year."""
+    formatted = []
+    for year_block in data:
+        new_year_block = {"year": year_block["year"]}
+        for item in year_block["items"]:
+            new_year_block[item["item"]] = item["count"]
+        formatted.append(new_year_block)
+    return formatted
 
 
 class User(BaseDocument):
