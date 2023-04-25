@@ -1,8 +1,9 @@
 from web.db import db, BaseDocument, DataType
-from datetime import datetime
+from datetime import datetime, timedelta
 from web import bcrypt
 
-MIN_DATE = datetime(1988, 1, 1)
+MIN_DATE = datetime(2008, 1, 1)
+MAX_DATE = datetime.now() - timedelta(weeks=4)
 
 
 class CVE(BaseDocument):

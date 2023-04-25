@@ -3,7 +3,7 @@ from flask_cors import cross_origin
 import traceback
 from web import app
 from datetime import datetime, timedelta
-from web.models import CVE, Product, MIN_DATE, User, Vendor, CVEOld
+from web.models import CVE, Product, MIN_DATE, MAX_DATE, User, Vendor, CVEOld
 from web.db import get_json_compatible
 from web.cwe_names.replace_cwe_codes_with_names import replace_cwe_codes_with_names
 
@@ -185,7 +185,7 @@ def filter_top_items(data, top_number):
 @app.route("/api/v1.0/threat_proliferation")  # API ROUTE 8
 def threat_proliferation():
     min_date, max_date = get_date_args()
-    bin_size = get_arg("bin_size", default="year", choices=("month", "year"))
+    bin_size = get_arg("bin_size", default="month", choices=("month", "year"))
     data = CVE.get_threat_proliferation(min_date, max_date, bin_size)
     return flask.jsonify(get_json_compatible(data))
 
@@ -228,24 +228,19 @@ def vendor_history():
 
 def get_year_args():
     duration = get_arg("duration", default="all", choices=("1y", "3y", "5y", "10y", "all"))
-    max__year = 2019
     if duration == "all":
         min_year = MIN_DATE.year
     else:
-        min_year = max__year - int(duration[:-1])
-    return min_year, max__year
+        min_year = MAX_DATE.year - int(duration[:-1])
+    return min_year, MAX_DATE.year
 
 
 def get_date_args():
     """Have an argument called 'duration' that is a string of the form '1d', '4d', '1w', '1m', '3m', '6m', '1y',
     '3y', '5y', '10y', 'all' (default). Turn that into min_date and max_date variables."""
     duration = get_arg("duration", default="all",
-                       choices=("1d", "4d", "1w", "1m", "3m", "6m", "1y", "3y", "5y", "10y", "all"))
-    max_date = datetime.now()
+                       choices=("1m", "3m", "6m", "1y", "3y", "5y", "10y", "all"))
     time_deltas = {
-        "1d": timedelta(days=1),
-        "4d": timedelta(days=4),
-        "1w": timedelta(weeks=1),
         "1m": timedelta(weeks=4),
         "3m": timedelta(weeks=12),
         "6m": timedelta(weeks=26),
@@ -257,17 +252,8 @@ def get_date_args():
     if duration == "all":
         min_date = MIN_DATE
     else:
-        min_date = max_date - time_deltas[duration]
-    return min_date, max_date
-
-
-@app.route("/api/v1.0/cve_old")
-def cve_old_data():
-    min_date = get_arg("min_date", default=MIN_DATE, coerce_type=datetime)
-    max_date = get_arg("max_date", default=datetime.now(), coerce_type=datetime)
-    bin_size = get_arg("bin_size", default="year", choices=("month", "year"))
-    data = CVEOld.get_data_by_date(min_date, max_date, bin_size)
-    return flask.jsonify(get_json_compatible(data))
+        min_date = MAX_DATE - time_deltas[duration]
+    return min_date, MAX_DATE
 
 
 def get_top_data_args():
