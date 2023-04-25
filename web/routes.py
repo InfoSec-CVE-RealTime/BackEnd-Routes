@@ -3,7 +3,7 @@ from flask_cors import cross_origin
 import traceback
 from web import app
 from datetime import datetime, timedelta
-from web.models import CVE, Product, MIN_DATE, MAX_DATE, User, Vendor, CVEOld
+from web.models import CVE, Product, MIN_DATE, MAX_DATE, User, Vendor
 from web.db import get_json_compatible
 from web.cwe_names.replace_cwe_codes_with_names import replace_cwe_codes_with_names
 
