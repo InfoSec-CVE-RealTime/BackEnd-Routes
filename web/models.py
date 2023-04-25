@@ -164,6 +164,21 @@ class Product(BaseDocument):
         products = cls.collection.aggregate(pipeline)
         return list(products) if as_dicts else [cls(product) for product in products]
 
+    @classmethod
+    def get_unique_products(cls):
+        """Get the unique products in the Product collection."""
+        products = cls.collection.aggregate([
+            {"$group": {
+                "_id": "$vulnerable_product"
+            }},
+            {"$project": {
+                "_id": 0,
+                "product": "$_id"
+            }}
+        ])
+        return [product["product"] for product in products]
+
+
 
 class VendorProduct(BaseDocument):
     collection = db.vendor_products
@@ -207,6 +222,20 @@ class Vendor(BaseDocument):
 
         vendors = Vendor.collection.aggregate(pipeline)
         return list(vendors) if as_dicts else [cls(vendor) for vendor in vendors]
+
+    @classmethod
+    def get_unique_vendors(cls):
+        """Get the unique vendors in the Vendor collection."""
+        vendors = cls.collection.aggregate([
+            {"$group": {
+                "_id": "$vendor"
+            }},
+            {"$project": {
+                "_id": 0,
+                "vendor": "$_id"
+            }}
+        ])
+        return [vendor["vendor"] for vendor in vendors]
 
 
 class User(BaseDocument):

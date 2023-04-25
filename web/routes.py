@@ -176,6 +176,34 @@ def top_vendors():
     return flask.jsonify(get_json_compatible(data))
 
 
+@app.route("/api/v1.0/get_products")  # API ROUTE 10
+def get_products():
+    products = Product.get_unique_products()
+    return flask.jsonify(get_json_compatible(products))
+
+
+@app.route("/api/v1.0/get_vendors")  # API ROUTE 11
+def get_vendors():
+    vendors = Vendor.get_unique_vendors()
+    return flask.jsonify(get_json_compatible(vendors))
+
+
+@app.route("/api/v1.0/product_history")  # API ROUTE 12
+def product_history():
+    product = get_arg("product", default=None, coerce_type=str)
+    min_date, max_date = get_year_args()
+    data = Product.get_product_history(product, min_date, max_date)
+    return flask.jsonify(get_json_compatible(data))
+
+
+@app.route("/api/v1.0/vendor_history")  # API ROUTE 13
+def vendor_history():
+    vendor = get_arg("vendor", default=None, coerce_type=str)
+    min_date, max_date = get_year_args()
+    data = Vendor.get_vendor_history(vendor, min_date, max_date)
+    return flask.jsonify(get_json_compatible(data))
+
+
 def get_year_args():
     duration = get_arg("duration", default="all", choices=("1y", "3y", "5y", "10y", "all"))
     max__year = 2019
