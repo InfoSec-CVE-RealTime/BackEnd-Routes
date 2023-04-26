@@ -5,7 +5,8 @@ from web import app
 from datetime import datetime, timedelta
 from web.models import CVE, Product, MIN_DATE, MAX_DATE, User, Vendor
 from web.db import get_json_compatible
-from web.cwe_names.replace_cwe_codes_with_names import replace_cwe_codes_with_names
+from web.cwe_names.replace_cwe_codes_with_names import replace_cwe_codes_with_names, replace_cwe_codes_with_names_count,\
+    cwe_codes_to_names, cwe_names_to_codes
 
 
 @app.route("/")
@@ -151,13 +152,35 @@ def impact_availability():
     return flask.jsonify(get_json_compatible(data))
 
 
-@app.route("/api/v1.0/vulnerability_type")  # API ROUTE 7
+@app.route("/api/v1.0/vulnerability_types")  # API ROUTE 7
+def get_vulnerability_types():
+    vuln_types = CVE.get_vulnerability_types()
+    vuln_types = list(set(cwe_codes_to_names(vuln_types)))
+    top_10 = CVE.get_top_vulnerability_types(MIN_DATE, 0, 10)
+    top_10 = replace_cwe_codes_with_names_count(top_10)
+    top_names = []
+    top = []
+    for item in top_10:
+        if len(top_names) == 5:
+            break
+        if item["cwe_name"] in top_names:
+            continue
+        top_names.append(item["cwe_name"])
+        top.append({"cwe_name": item["cwe_name"], "count": item["count"]})
+    top = [x["cwe_name"] for x in top]
+    return flask.jsonify(get_json_compatible({"items": vuln_types, "top_items": top}))
+
+
+@app.route("/api/v1.0/vulnerability_type_history")  # API ROUTE 7.5
 def vulnerability_type():
-    min_date, max_date = get_date_args()
-    bin_size = get_arg("bin_size", default="month", choices=("month", "year"))
-    data = CVE.get_binned_by_field("cwe_code", min_date, max_date, bin_size)
+    vulnerability_types = flask.request.args.get("items") or ""
+    if not vulnerability_types:
+        return flask.jsonify(get_json_compatible([]))
+    vulnerability_types = vulnerability_types.split(",")
+    cwe_codes = cwe_names_to_codes(vulnerability_types)
+    data = CVE.get_cwe_code_history(cwe_codes, MIN_DATE, MAX_DATE)
     data = replace_cwe_codes_with_names(data)
-    data = filter_top_items(data, 5)
+    data = get_history_totals(vulnerability_types, data)
     return flask.jsonify(get_json_compatible(data))
 
 
@@ -218,8 +241,7 @@ def product_history():
     if not products:
         return flask.jsonify(get_json_compatible([]))
     products = products.split(",")
-    min_date, max_date = get_year_args()
-    data = Product.get_product_history(products, min_date, max_date)
+    data = Product.get_product_history(products, MIN_DATE.year, MAX_DATE.year)
     data = get_history_totals(products, data)
     return flask.jsonify(get_json_compatible(data))
 
@@ -230,17 +252,16 @@ def vendor_history():
     if not vendors:
         return flask.jsonify(get_json_compatible([]))
     vendors = vendors.split(",")
-    min_date, max_date = get_year_args()
-    data = Vendor.get_vendor_history(vendors, min_date, max_date)
+    data = Vendor.get_vendor_history(vendors, MIN_DATE.year, MAX_DATE.year)
     data = get_history_totals(vendors, data)
     return flask.jsonify(get_json_compatible(data))
 
 
-def get_history_totals(products, data):
+def get_history_totals(items, data):
     new_blocks = []
     for block in data:
-        new_block = {"date": block["year"], "total": 0}
-        for product in products:
+        new_block = {"date": block["date"], "total": 0}
+        for product in items:
             new_block[product] = block.get(product, 0)
             new_block["total"] += new_block[product]
         new_blocks.append(new_block)
