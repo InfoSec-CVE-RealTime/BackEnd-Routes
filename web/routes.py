@@ -3,9 +3,10 @@ from flask_cors import cross_origin
 import traceback
 from web import app
 from datetime import datetime, timedelta
-from web.models import CVE, Product, MIN_DATE, User, Vendor, CVEOld
+from web.models import CVE, Product, MIN_DATE, MAX_DATE, User, Vendor
 from web.db import get_json_compatible
-from web.cwe_names.replace_cwe_codes_with_names import replace_cwe_codes_with_names
+from web.cwe_names.replace_cwe_codes_with_names import replace_cwe_codes_with_names, replace_cwe_codes_with_names_count,\
+    cwe_codes_to_names, cwe_names_to_codes
 
 
 @app.route("/")
@@ -151,13 +152,35 @@ def impact_availability():
     return flask.jsonify(get_json_compatible(data))
 
 
-@app.route("/api/v1.0/vulnerability_type")  # API ROUTE 7
+@app.route("/api/v1.0/vulnerability_types")  # API ROUTE 7
+def get_vulnerability_types():
+    vuln_types = CVE.get_vulnerability_types()
+    vuln_types = list(set(cwe_codes_to_names(vuln_types)))
+    top_10 = CVE.get_top_vulnerability_types(MIN_DATE, 0, 10)
+    top_10 = replace_cwe_codes_with_names_count(top_10)
+    top_names = []
+    top = []
+    for item in top_10:
+        if len(top_names) == 5:
+            break
+        if item["cwe_name"] in top_names:
+            continue
+        top_names.append(item["cwe_name"])
+        top.append({"cwe_name": item["cwe_name"], "count": item["count"]})
+    top = [x["cwe_name"] for x in top]
+    return flask.jsonify(get_json_compatible({"items": vuln_types, "top_items": top}))
+
+
+@app.route("/api/v1.0/vulnerability_type_history")  # API ROUTE 7.5
 def vulnerability_type():
-    min_date, max_date = get_date_args()
-    bin_size = get_arg("bin_size", default="month", choices=("month", "year"))
-    data = CVE.get_binned_by_field("cwe_code", min_date, max_date, bin_size)
+    vulnerability_types = flask.request.args.get("items") or ""
+    if not vulnerability_types:
+        return flask.jsonify(get_json_compatible([]))
+    vulnerability_types = vulnerability_types.split(",")
+    cwe_codes = cwe_names_to_codes(vulnerability_types)
+    data = CVE.get_cwe_code_history(cwe_codes, MIN_DATE, MAX_DATE)
     data = replace_cwe_codes_with_names(data)
-    data = filter_top_items(data, 5)
+    data = get_history_totals(vulnerability_types, data)
     return flask.jsonify(get_json_compatible(data))
 
 
@@ -185,7 +208,7 @@ def filter_top_items(data, top_number):
 @app.route("/api/v1.0/threat_proliferation")  # API ROUTE 8
 def threat_proliferation():
     min_date, max_date = get_date_args()
-    bin_size = get_arg("bin_size", default="year", choices=("month", "year"))
+    bin_size = get_arg("bin_size", default="month", choices=("month", "year"))
     data = CVE.get_threat_proliferation(min_date, max_date, bin_size)
     return flask.jsonify(get_json_compatible(data))
 
@@ -198,26 +221,68 @@ def top_vendors():
     return flask.jsonify(get_json_compatible(data))
 
 
+@app.route("/api/v1.0/get_products")  # API ROUTE 10
+def get_products():
+    products = Product.get_unique_products()
+    top = Product.get_top_products(MIN_DATE.year, 0, 5)
+    return flask.jsonify(get_json_compatible({"items": products, "top_items": [x["product"] for x in top]}))
+
+
+@app.route("/api/v1.0/get_vendors")  # API ROUTE 11
+def get_vendors():
+    vendors = Vendor.get_unique_vendors()
+    top = Vendor.get_top_vendors(MIN_DATE.year, 0, 5)
+    return flask.jsonify(get_json_compatible({"items": vendors, "top_items": [x["vendor"] for x in top]}))
+
+
+@app.route("/api/v1.0/product_history")  # API ROUTE 12
+def product_history():
+    products = flask.request.args.get("items") or ""
+    if not products:
+        return flask.jsonify(get_json_compatible([]))
+    products = products.split(",")
+    data = Product.get_product_history(products, MIN_DATE.year, MAX_DATE.year)
+    data = get_history_totals(products, data)
+    return flask.jsonify(get_json_compatible(data))
+
+
+@app.route("/api/v1.0/vendor_history")  # API ROUTE 13
+def vendor_history():
+    vendors = flask.request.args.get("items") or ""
+    if not vendors:
+        return flask.jsonify(get_json_compatible([]))
+    vendors = vendors.split(",")
+    data = Vendor.get_vendor_history(vendors, MIN_DATE.year, MAX_DATE.year)
+    data = get_history_totals(vendors, data)
+    return flask.jsonify(get_json_compatible(data))
+
+
+def get_history_totals(items, data):
+    new_blocks = []
+    for block in data:
+        new_block = {"date": block["date"], "total": 0}
+        for product in items:
+            new_block[product] = block.get(product, 0)
+            new_block["total"] += new_block[product]
+        new_blocks.append(new_block)
+    return new_blocks
+
+
 def get_year_args():
     duration = get_arg("duration", default="all", choices=("1y", "3y", "5y", "10y", "all"))
-    max__year = 2019
     if duration == "all":
         min_year = MIN_DATE.year
     else:
-        min_year = max__year - int(duration[:-1])
-    return min_year, max__year
+        min_year = MAX_DATE.year - int(duration[:-1])
+    return min_year, MAX_DATE.year
 
 
 def get_date_args():
     """Have an argument called 'duration' that is a string of the form '1d', '4d', '1w', '1m', '3m', '6m', '1y',
     '3y', '5y', '10y', 'all' (default). Turn that into min_date and max_date variables."""
     duration = get_arg("duration", default="all",
-                       choices=("1d", "4d", "1w", "1m", "3m", "6m", "1y", "3y", "5y", "10y", "all"))
-    max_date = datetime.now()
+                       choices=("1m", "3m", "6m", "1y", "3y", "5y", "10y", "all"))
     time_deltas = {
-        "1d": timedelta(days=1),
-        "4d": timedelta(days=4),
-        "1w": timedelta(weeks=1),
         "1m": timedelta(weeks=4),
         "3m": timedelta(weeks=12),
         "6m": timedelta(weeks=26),
@@ -229,17 +294,8 @@ def get_date_args():
     if duration == "all":
         min_date = MIN_DATE
     else:
-        min_date = max_date - time_deltas[duration]
-    return min_date, max_date
-
-
-@app.route("/api/v1.0/cve_old")
-def cve_old_data():
-    min_date = get_arg("min_date", default=MIN_DATE, coerce_type=datetime)
-    max_date = get_arg("max_date", default=datetime.now(), coerce_type=datetime)
-    bin_size = get_arg("bin_size", default="year", choices=("month", "year"))
-    data = CVEOld.get_data_by_date(min_date, max_date, bin_size)
-    return flask.jsonify(get_json_compatible(data))
+        min_date = MAX_DATE - time_deltas[duration]
+    return min_date, MAX_DATE
 
 
 def get_top_data_args():
