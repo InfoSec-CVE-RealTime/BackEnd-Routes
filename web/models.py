@@ -292,7 +292,8 @@ def format_history_data(data):
     for year_block in data:
         new_year_block = {"year": year_block["year"]}
         for item in year_block["items"]:
-            new_year_block[item["item"]] = item["count"]
+            if item["item"]:
+                new_year_block[item["item"]] = item["count"]
         formatted.append(new_year_block)
     return formatted
 

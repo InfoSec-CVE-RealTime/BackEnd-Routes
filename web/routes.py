@@ -201,18 +201,22 @@ def top_vendors():
 @app.route("/api/v1.0/get_products")  # API ROUTE 10
 def get_products():
     products = Product.get_unique_products()
-    return flask.jsonify(get_json_compatible(products))
+    top = Product.get_top_products(MIN_DATE.year, 0, 5)
+    return flask.jsonify(get_json_compatible({"items": products, "top_items": [x["product"] for x in top]}))
 
 
 @app.route("/api/v1.0/get_vendors")  # API ROUTE 11
 def get_vendors():
     vendors = Vendor.get_unique_vendors()
-    return flask.jsonify(get_json_compatible(vendors))
+    top = Vendor.get_top_vendors(MIN_DATE.year, 0, 5)
+    return flask.jsonify(get_json_compatible({"items": vendors, "top_items": [x["vendor"] for x in top]}))
 
 
 @app.route("/api/v1.0/product_history")  # API ROUTE 12
 def product_history():
-    products = flask.request.args.get("products") or ""
+    products = flask.request.args.get("items") or ""
+    if not products:
+        return flask.jsonify(get_json_compatible([]))
     products = products.split(",")
     min_date, max_date = get_year_args()
     data = Product.get_product_history(products, min_date, max_date)
@@ -222,7 +226,9 @@ def product_history():
 
 @app.route("/api/v1.0/vendor_history")  # API ROUTE 13
 def vendor_history():
-    vendors = flask.request.args.get("vendors") or ""
+    vendors = flask.request.args.get("items") or ""
+    if not vendors:
+        return flask.jsonify(get_json_compatible([]))
     vendors = vendors.split(",")
     min_date, max_date = get_year_args()
     data = Vendor.get_vendor_history(vendors, min_date, max_date)
