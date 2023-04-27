@@ -281,8 +281,11 @@ def get_date_args():
     """Have an argument called 'duration' that is a string of the form '1d', '4d', '1w', '1m', '3m', '6m', '1y',
     '3y', '5y', '10y', 'all' (default). Turn that into min_date and max_date variables."""
     duration = get_arg("duration", default="all",
-                       choices=("1m", "3m", "6m", "1y", "3y", "5y", "10y", "all"))
+                       choices=("1d", "4d", "1w", "1m", "3m", "6m", "1y", "3y", "5y", "10y", "all"))
     time_deltas = {
+        "1d": timedelta(days=1),
+        "4d": timedelta(days=4),
+        "1w": timedelta(weeks=1),
         "1m": timedelta(weeks=4),
         "3m": timedelta(weeks=12),
         "6m": timedelta(weeks=26),

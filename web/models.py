@@ -95,11 +95,11 @@ class CVE(BaseDocument):
     @classmethod
     def get_next_bin_date(cls, current_date, bin_size):
         if bin_size == "year":
-            return current_date.replace(year=current_date.year + 1)
+            return current_date.replace(year=current_date.year + 1, day=1)
         else:  # bin_size == "month"
             next_month = current_date.month + 1 if current_date.month < 12 else 1
             next_year = current_date.year + 1 if next_month == 1 else current_date.year
-            return current_date.replace(year=next_year, month=next_month)
+            return current_date.replace(year=next_year, month=next_month, day=1)
 
     @classmethod
     def get_vulnerability_types(cls):
