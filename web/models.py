@@ -3,7 +3,7 @@ from datetime import datetime, timedelta
 from web import bcrypt
 
 MIN_DATE = datetime(2008, 1, 1)
-MAX_DATE = datetime.now() - timedelta(weeks=2)
+MAX_DATE = datetime.now()
 
 
 class CVE(BaseDocument):
