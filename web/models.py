@@ -72,7 +72,7 @@ class CVE(BaseDocument):
     def collect_data_by_bin(cls, cves, min_date, max_date, bin_size, use_field=True):
         data = []
         date_format = cls.get_bin_aggregate_date_format(bin_size)
-        current_date = min_date
+        current_date = min_date.replace(day=1)
         while current_date <= max_date:
             data_date = current_date.strftime(date_format)
             current_bin = {"date": current_date.strftime("%Y-%m-%d")}
