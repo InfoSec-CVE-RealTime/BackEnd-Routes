@@ -210,6 +210,9 @@ def threat_proliferation():
     min_date, max_date = get_date_args()
     bin_size = get_arg("bin_size", default="month", choices=("month", "year"))
     data = CVE.get_threat_proliferation(min_date, max_date, bin_size)
+    for block in data:
+        if "count" not in block:
+            block["count"] = 0
     return flask.jsonify(get_json_compatible(data))
 
 
