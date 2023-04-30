@@ -10,6 +10,7 @@ from web.cwe_names.replace_cwe_codes_with_names import replace_cwe_codes_with_na
 
 
 @app.route("/")
+@cross_origin()
 def home():
     return flask.jsonify({"message": "Hello World!"})
 
@@ -68,6 +69,7 @@ def login():
 
 
 @app.route("/api/v1.0/user_session", methods=["POST"])
+@cross_origin()
 def get_user_session():
     user_id = flask.request.json.get("user_id")
     if not user_id:
@@ -86,6 +88,7 @@ def get_user_session():
 
 
 @app.route("/api/v1.0/set_subscription", methods=["POST"])
+@cross_origin()
 def set_subscription():
     user_id = flask.request.json.get("user_id")
     subscribe = bool(flask.request.json.get("subscribe"))
@@ -104,6 +107,7 @@ def set_subscription():
 
 
 @app.route("/api/v1.0/top_cves")  # API ROUTE 1
+@cross_origin()
 def top_cves():
     min_date, max_date = get_date_args()
     page, page_size = get_top_data_args()
@@ -112,6 +116,7 @@ def top_cves():
 
 
 @app.route("/api/v1.0/access_complexity")  # API ROUTE 2
+@cross_origin()
 def access_complexity():
     min_date, max_date = get_date_args()
     bin_size = get_arg("bin_size", default="year", choices=("month", "year"))
@@ -120,6 +125,7 @@ def access_complexity():
 
 
 @app.route("/api/v1.0/access_vector")  # API ROUTE 3
+@cross_origin()
 def access_vector():
     min_date, max_date = get_date_args()
     bin_size = get_arg("bin_size", default="year", choices=("month", "year"))
@@ -128,6 +134,7 @@ def access_vector():
 
 
 @app.route("/api/v1.0/top_products")  # API ROUTE 4
+@cross_origin()
 def top_products():
     min_year, _ = get_year_args()
     page, page_size = get_top_data_args()
@@ -136,6 +143,7 @@ def top_products():
 
 
 @app.route("/api/v1.0/access_authentication")  # API ROUTE 5
+@cross_origin()
 def access_authentication():
     min_date = get_arg("min_date", default=MIN_DATE, coerce_type=datetime)
     max_date = get_arg("max_date", default=datetime.now(), coerce_type=datetime)
@@ -145,6 +153,7 @@ def access_authentication():
 
 
 @app.route("/api/v1.0/impact_availability")  # API ROUTE 6
+@cross_origin()
 def impact_availability():
     min_date, max_date = get_date_args()
     bin_size = get_arg("bin_size", default="year", choices=("month", "year"))
@@ -153,6 +162,7 @@ def impact_availability():
 
 
 @app.route("/api/v1.0/vulnerability_types")  # API ROUTE 7
+@cross_origin()
 def get_vulnerability_types():
     vuln_types = CVE.get_vulnerability_types()
     vuln_types = list(set(cwe_codes_to_names(vuln_types)))
@@ -172,6 +182,7 @@ def get_vulnerability_types():
 
 
 @app.route("/api/v1.0/vulnerability_type_history")  # API ROUTE 7.5
+@cross_origin()
 def vulnerability_type():
     vulnerability_types = flask.request.args.get("items") or ""
     if not vulnerability_types:
@@ -184,28 +195,8 @@ def vulnerability_type():
     return flask.jsonify(get_json_compatible(data))
 
 
-def filter_top_items(data, top_number):
-    totals = {}
-    for block in data:
-        for item in block:
-            if item in ["date", "Unclassified Vulnerability"]:
-                continue
-            totals[item] = totals.get(item, 0) + block[item]
-    top_items = sorted(totals, key=totals.get, reverse=True)[:top_number]
-    filtered_data = []
-    for block in data:
-        # skip years before 2008
-        year = int(block["date"][:4])
-        if year < 2013:
-            continue
-        filtered_block = {"date": block["date"]}
-        for item in top_items:
-            filtered_block[item] = block.get(item, 0)
-        filtered_data.append(filtered_block)
-    return filtered_data
-
-
 @app.route("/api/v1.0/threat_proliferation")  # API ROUTE 8
+@cross_origin()
 def threat_proliferation():
     min_date, max_date = get_date_args()
     bin_size = get_arg("bin_size", default="month", choices=("month", "year"))
@@ -217,6 +208,7 @@ def threat_proliferation():
 
 
 @app.route("/api/v1.0/top_vendors")  # API ROUTE 9
+@cross_origin()
 def top_vendors():
     min_year, _ = get_year_args()
     page, page_size = get_top_data_args()
@@ -225,6 +217,7 @@ def top_vendors():
 
 
 @app.route("/api/v1.0/get_products")  # API ROUTE 10
+@cross_origin()
 def get_products():
     products = Product.get_unique_products()
     top = Product.get_top_products(MIN_DATE.year, 0, 5)
@@ -232,6 +225,7 @@ def get_products():
 
 
 @app.route("/api/v1.0/get_vendors")  # API ROUTE 11
+@cross_origin()
 def get_vendors():
     vendors = Vendor.get_unique_vendors()
     top = Vendor.get_top_vendors(MIN_DATE.year, 0, 5)
@@ -239,6 +233,7 @@ def get_vendors():
 
 
 @app.route("/api/v1.0/product_history")  # API ROUTE 12
+@cross_origin()
 def product_history():
     products = flask.request.args.get("items") or ""
     if not products:
@@ -250,6 +245,7 @@ def product_history():
 
 
 @app.route("/api/v1.0/vendor_history")  # API ROUTE 13
+@cross_origin()
 def vendor_history():
     vendors = flask.request.args.get("items") or ""
     if not vendors:
